@@ -2,8 +2,7 @@
 
 A web app that seats parties at the smallest free table that fits them, using a **sorted linked list**.
 
-**Live demo:** _paste your GitHub Pages link here_
-
+https://arshadrahim2006-wq.github.io/Sector-/
 ## DSA concept: Linked list
 
 Each table is a node holding its id, seat count, the party sitting there (or `null`), and a pointer to the next table. The list is kept **sorted by seat count**, so walking from the head, the first free table with enough seats is automatically the **best fit** (it wastes the fewest seats).
