@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restaurant Tables – DSA Linked List Project</title>
+<style>
+:root{--bg:#f7efe3;--card:#fffaf2;--ink:#2e1f14;--muted:#7a6552;--line:#e3d3bd;--accent:#8c2f39;--free:#5b8c5a;--busy:#c0583b}
+@media (prefers-color-scheme:dark){:root{--bg:#1f1612;--card:#2a1e18;--ink:#f6ebdd;--muted:#bba68f;--line:#473628;--accent:#e58a93;--free:#7bc47a;--busy:#ef8a6c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,serif;padding:20px}
+main{max-width:860px;margin:0 auto}
+h1{margin:0 0 4px;font-size:1.8rem;color:var(--accent)}
+.sub{color:var(--muted);margin:0 0 18px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+label{display:flex;flex-direction:column;font-size:.85rem;color:var(--muted);gap:4px}
+input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+button{font:inherit;padding:9px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+@media (prefers-color-scheme:dark){button{color:#2a0d10}}
+button.alt{background:transparent;color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#msg{min-height:1.4em;margin:8px 0 0;color:var(--accent)}
+.stats{display:flex;gap:22px;flex-wrap:wrap;color:var(--muted);margin-bottom:10px}.stats b{color:var(--ink)}
+.chain{display:flex;align-items:center;overflow-x:auto;padding:8px 2px 12px}
+.tbl{min-width:120px;border:2px solid var(--free);border-radius:12px;padding:10px;text-align:center;background:var(--bg)}
+.tbl.busy{border-color:var(--busy)}
+.tbl b{display:block;font-size:1.05rem}
+.tbl small{color:var(--muted);display:block}
+.tbl button{margin-top:6px;padding:4px 10px;font-size:.8rem}
+.ar{padding:0 6px;color:var(--muted)}
+.tag{font-size:.72rem;color:var(--accent)}
+#log{list-style:none;margin:0;padding:0;max-height:160px;overflow:auto;font:.85rem Consolas,monospace}
+#log li{padding:3px 0;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<main>
+<h1>Restaurant table arrangement</h1>
+<p class="sub">Tables are nodes in a linked list sorted by seats, so the first free table that fits is always the best fit.</p>
+
+<section class="box">
+<h2>Seat a party</h2>
+<div class="row">
+<label>Party name <input id="party" maxlength="24" placeholder="Rao family"></label>
+<label>Guests <input id="size" type="number" min="1" max="12" value="2" style="width:90px"></label>
+<button id="seat">Find a table</button>
+</div>
+<h2 style="margin-top:16px">Manage tables</h2>
+<div class="row">
+<label>New table seats <input id="cap" type="number" min="1" max="12" value="4" style="width:90px"></label>
+<button id="add" class="alt">Add table</button>
+</div>
+<p id="msg" role="status"></p>
+</section>
+
+<section class="box">
+<div class="stats"><span>Tables: <b id="nt">0</b></span><span>Occupied: <b id="no">0</b></span><span>Free seats: <b id="fs">0</b></span></div>
+<div class="chain" id="chain"></div>
+</section>
+
+<section class="box"><h2>Operation log</h2><ul id="log"></ul></section>
+</main>
+
+<script>
+// ---- Singly linked list of tables, kept sorted by capacity ----
+class Table { constructor(id, cap){ this.id = id; this.cap = cap; this.party = null; this.next = null; } }
+class TableList {
+  constructor(){ this.head = null; this.size = 0; }
+  insertSorted(t){                              // O(n): walk to the right position
+    if (!this.head || t.cap < this.head.cap){ t.next = this.head; this.head = t; }
+    else {
+      let c = this.head;
+      while (c.next && c.next.cap <= t.cap) c = c.next;
+      t.next = c.next; c.next = t;
+    }
+    this.size++;
+  }
+  findFree(guests){                             // O(n): first free table that fits = best fit
+    let c = this.head;
+    while (c && (c.party || c.cap < guests)) c = c.next;
+    return c;
+  }
+  remove(id){                                   // O(n): relink around the node
+    if (!this.head) return false;
+    if (this.head.id === id){ this.head = this.head.next; this.size--; return true; }
+    let c = this.head;
+    while (c.next && c.next.id !== id) c = c.next;
+    if (!c.next) return false;
+    c.next = c.next.next; this.size--; return true;
+  }
+  toArray(){ const a = []; for (let c = this.head; c; c = c.next) a.push(c); return a; }
+}
+
+const tables = new TableList();
+let nextId = 1;
+[2, 2, 4, 4, 6, 8].forEach(c => tables.insertSorted(new Table(nextId++, c)));
+
+const $ = id => document.getElementById(id);
+const say = t => $('msg').textContent = t;
+function log(t){ const li = document.createElement('li'); li.textContent = new Date().toLocaleTimeString() + '  ' + t; $('log').prepend(li); }
+
+function render(){
+  const arr = tables.toArray();
+  $('nt').textContent = arr.length;
+  $('no').textContent = arr.filter(t => t.party).length;
+  $('fs').textContent = arr.filter(t => !t.party).reduce((s, t) => s + t.cap, 0);
+  const chain = $('chain'); chain.innerHTML = '';
+  arr.forEach((t, i) => {
+    const d = document.createElement('div'); d.className = 'tbl' + (t.party ? ' busy' : '');
+    const b = document.createElement('b'); b.textContent = `Table ${t.id}`;
+    const s = document.createElement('small'); s.textContent = `${t.cap} seats`;
+    const p = document.createElement('small'); p.textContent = t.party ? `${t.party.name} (${t.party.size})` : 'Free';
+    d.append(b, s, p);
+    if (i === 0){ const g = document.createElement('span'); g.className = 'tag'; g.textContent = 'head'; d.append(g); }
+    const btn = document.createElement('button'); btn.className = 'alt';
+    if (t.party){ btn.textContent = 'Free table'; btn.onclick = () => { log(`freed Table ${t.id} (${t.party.name} left)`); say(`Table ${t.id} is free again.`); t.party = null; render(); }; }
+    else { btn.textContent = 'Remove'; btn.onclick = () => { tables.remove(t.id); log(`removed Table ${t.id}`); say(`Removed Table ${t.id}.`); render(); }; }
+    d.append(btn); chain.append(d);
+    if (i < arr.length - 1){ const a = document.createElement('span'); a.className = 'ar'; a.textContent = '→'; chain.append(a); }
+  });
+  if (!arr.length) chain.textContent = 'No tables yet. Add one above.';
+}
+
+$('seat').onclick = () => {
+  const name = $('party').value.trim(), size = parseInt($('size').value, 10);
+  if (!name){ say('Enter a party name.'); $('party').focus(); return; }
+  if (!(size >= 1)){ say('Enter the number of guests.'); return; }
+  const t = tables.findFree(size);
+  if (!t){ say(`No free table fits ${size} guests. Free a table or add a bigger one.`); log(`no table for ${name} (${size})`); return; }
+  t.party = { name, size };
+  say(`${name} (${size}) seated at Table ${t.id} (${t.cap} seats).`);
+  log(`seated ${name} (${size}) at Table ${t.id}`);
+  $('party').value = ''; render();
+};
+$('add').onclick = () => {
+  const cap = parseInt($('cap').value, 10);
+  if (!(cap >= 1 && cap <= 12)){ say('Choose 1 to 12 seats.'); return; }
+  const t = new Table(nextId++, cap); tables.insertSorted(t);
+  say(`Added Table ${t.id} with ${cap} seats.`); log(`added Table ${t.id} (${cap} seats), inserted in sorted position`); render();
+};
+render();
+</script>
+</body>
+</html>
